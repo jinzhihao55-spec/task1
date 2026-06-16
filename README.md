@@ -23,14 +23,10 @@ source venv/bin/activate  # Linux/Mac
 # 2. 安装依赖
 pip install -r requirements.txt
 
-# 3. 配置环境变量（可选）
-cp .env.example .env
-# 编辑 .env 填入你的 API Key
-
-# 4. 启动服务
+# 3. 启动服务
 python app.py
 
-# 5. 访问
+# 4. 访问
 # http://localhost:5000
 ```
 
