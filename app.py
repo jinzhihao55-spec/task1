@@ -11,6 +11,8 @@ from routes.copywriting import copywriting_bp
 from routes.translate import translate_bp
 from routes.pdf_summary import pdf_summary_bp
 from routes.csv_preview import csv_preview_bp
+from routes.config import config_bp
+from routes.history import history_bp
 
 app = Flask(__name__,
             template_folder='templates',
@@ -31,6 +33,8 @@ app.register_blueprint(copywriting_bp, url_prefix='/api/copywriting')
 app.register_blueprint(translate_bp, url_prefix='/api/translate')
 app.register_blueprint(pdf_summary_bp, url_prefix='/api/pdf')
 app.register_blueprint(csv_preview_bp, url_prefix='/api/csv')
+app.register_blueprint(config_bp, url_prefix='/api/config')
+app.register_blueprint(history_bp, url_prefix='/api/history')
 
 
 # 首页路由

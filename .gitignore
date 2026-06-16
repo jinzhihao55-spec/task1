@@ -6,3 +6,5 @@ static/uploads/*
 !static/uploads/.gitkeep
 .DS_Store
 *.log
+data/
+static/exports/

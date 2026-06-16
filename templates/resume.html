@@ -140,11 +140,20 @@
                 <span class="text-xl font-bold text-on-surface">AI助手</span>
             </a>
             
-            <div class="flex items-center gap-6">
+            <div class="flex items-center gap-4">
                 <a href="/" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
                     <span class="material-symbols-outlined text-lg">home</span>
                     <span>返回首页</span>
                 </a>
+
+                <span id="api-status-badge" class="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-500/10 border border-yellow-500/30 text-yellow-400" title="当前为模拟返回">
+                    <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                    <span id="api-status-text">未配置</span>
+                </span>
+
+                <button onclick="openSettings()" class="btn-secondary px-4 py-2 rounded-full text-sm font-medium text-on-surface flex items-center gap-2" title="配置 AI 模型与 API Key">
+                    <span class="material-symbols-outlined text-base">settings</span>
+                </button>
             </div>
         </nav>
     </header>
@@ -166,21 +175,29 @@
             <div class="glass-card rounded-2xl p-8 mb-8">
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-on-surface mb-3">简历内容</label>
-                    <textarea 
+                    <textarea
                         id="resume-input"
                         class="input-area w-full h-64 rounded-xl p-4 text-on-surface placeholder-on-surface-variant resize-none"
-                        placeholder="请粘贴你的简历内容，例如：
-
-姓名：张三
-职位：产品经理
-
-工作经历：
-- 负责产品规划和设计
-- 协调团队开发进度
-
-技能：Axure, Sketch, SQL..."
-
+                        placeholder="请粘贴你的简历内容..."
                     ></textarea>
+                </div>
+
+                <!-- 文件上传区 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-on-surface mb-3">或上传文件（PDF / Word / TXT）</label>
+                    <div id="resume-dropzone" class="dropzone border-2 border-dashed border-outline-variant rounded-xl p-6 text-center cursor-pointer hover:border-primary transition-colors">
+                        <input type="file" id="resume-file" class="hidden" accept=".pdf,.docx,.doc,.txt">
+                        <div id="resume-upload-default">
+                            <span class="material-symbols-outlined text-3xl text-on-surface-variant mb-2">upload_file</span>
+                            <p class="text-on-surface-variant text-sm">点击或拖拽文件到此处</p>
+                            <p class="text-on-surface-variant text-xs mt-1">支持 .pdf / .docx / .txt</p>
+                        </div>
+                        <div id="resume-upload-success" class="hidden">
+                            <span class="material-symbols-outlined text-3xl text-emerald-400 mb-2">check_circle</span>
+                            <p id="resume-filename" class="text-on-surface text-sm font-medium"></p>
+                            <p class="text-on-surface-variant text-xs mt-1">文件已加载，点击「开始优化」</p>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="flex flex-wrap gap-4">
@@ -215,20 +232,45 @@
                     <span class="material-symbols-outlined text-secondary">check_circle</span>
                     <h2 class="text-xl font-bold text-on-surface">优化结果</h2>
                 </div>
-                
+
                 <div class="result-card rounded-2xl p-6 md:p-8">
-                    <pre id="result-content" class="whitespace-pre-wrap text-on-surface leading-relaxed font-sans"></pre>
+                    <div id="result-content" class="text-on-surface leading-relaxed"></div>
                 </div>
-                
-                <div class="flex flex-wrap gap-4 mt-6">
-                    <button onclick="copyResult()" class="btn-secondary px-6 py-3 rounded-xl font-semibold text-on-surface flex items-center gap-2">
+
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button onclick="copyResult()" class="btn-secondary px-5 py-3 rounded-xl font-medium text-on-surface flex items-center gap-2">
                         <span class="material-symbols-outlined">content_copy</span>
-                        复制结果
+                        复制
+                    </button>
+                    <button onclick="exportResult('docx')" class="btn-secondary px-5 py-3 rounded-xl font-medium text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined">description</span>
+                        导出 Word
+                    </button>
+                    <button onclick="exportResult('pdf')" class="btn-secondary px-5 py-3 rounded-xl font-medium text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined">picture_as_pdf</span>
+                        导出 PDF
                     </button>
                     <button onclick="optimizeResume()" class="btn-primary px-6 py-3 rounded-xl font-semibold flex items-center gap-2">
                         <span class="material-symbols-outlined">refresh</span>
                         重新优化
                     </button>
+                </div>
+
+                <!-- 文档预览 -->
+                <div id="export-preview" class="hidden mt-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-semibold text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">preview</span>
+                            文档预览
+                        </h3>
+                        <a id="export-download-link" href="#" download class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1">
+                            <span class="material-symbols-outlined text-base">download</span>
+                            下载
+                        </a>
+                    </div>
+                    <div class="result-card rounded-2xl p-4">
+                        <iframe id="export-iframe" class="w-full rounded-lg" style="height: 600px; background: white;"></iframe>
+                    </div>
                 </div>
             </div>
             
@@ -251,7 +293,10 @@
             <p>© 2024 AI助手 - 简历优化工具</p>
         </div>
     </footer>
-    
+
+    {% include "_settings_modal.html" %}
+
+    <script src="/static/js/utils.js"></script>
     <script>
         // p5.js Particle System (simplified for tool pages)
         let particles = [];
@@ -314,31 +359,75 @@
             resizeCanvas(windowWidth, windowHeight);
         }
         
-        async function optimizeResume() {
-            const input = document.getElementById('resume-input').value.trim();
-            
-            if (!input) {
-                showError('请输入简历内容');
+        let selectedFile = null;
+        let currentResultText = '';
+        let currentExportText = '';  // 用于导出的内容（仅简历部分，不含建议）
+        const TOOL_NAME = 'resume';
+
+        function handleFileSelect(file) {
+            const allowed = ['.pdf', '.docx', '.doc', '.txt'];
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowed.includes(ext)) {
+                showError('不支持的文件格式：' + ext);
                 return;
             }
-            
+            if (file.size > 10 * 1024 * 1024) {
+                showError('文件超过 10MB 限制');
+                return;
+            }
+            selectedFile = file;
+            showUploadSuccess('resume-upload-default', 'resume-upload-success', 'resume-filename', file.name);
+            hideError();
+        }
+
+        function clearResumeFile() {
+            selectedFile = null;
+            document.getElementById('resume-file').value = '';
+            clearUpload('resume-upload-default', 'resume-upload-success');
+        }
+
+        async function optimizeResume() {
+            const input = document.getElementById('resume-input').value.trim();
+
+            if (!input && !selectedFile) {
+                showError('请输入简历内容或上传文件');
+                return;
+            }
+
             hideError();
             hideResult();
+            hideExportPreview();
             showLoading();
-            
+
             try {
-                const response = await fetch('/api/resume/optimize', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: input }),
-                });
-                
-                const data = await response.json();
-                
+                let response, data;
+                if (selectedFile) {
+                    const formData = new FormData();
+                    formData.append('file', selectedFile);
+                    response = await fetch('/api/resume/optimize', { method: 'POST', body: formData });
+                } else {
+                    response = await fetch('/api/resume/optimize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: input }),
+                    });
+                }
+
+                data = await response.json();
+
                 if (response.ok) {
-                    showResult(data.result || data.optimized || data.resume);
+                    const text = data.result || data.optimized || data.resume || '';
+                    currentResultText = text;
+                    // 优先使用后端拆分出的"仅简历"内容；否则回退到全文
+                    currentExportText = data.optimized_resume || data.resume_only || text;
+                    showResult(text);
+                    saveHistory({
+                        tool: TOOL_NAME,
+                        title: '简历优化 - ' + new Date().toLocaleString('zh-CN'),
+                        input_text: data.input_text || input,
+                        output_text: text,
+                        meta: { source: selectedFile ? 'file' : 'text' },
+                    });
                 } else {
                     showError(data.error || '优化失败，请稍后重试');
                 }
@@ -348,47 +437,66 @@
                 hideLoading();
             }
         }
-        
+
         function clearInput() {
             document.getElementById('resume-input').value = '';
+            clearResumeFile();
             hideResult();
+            hideExportPreview();
             hideError();
         }
-        
+
         function showLoading() {
             document.getElementById('loading-state').classList.remove('hidden');
             document.getElementById('optimize-btn').disabled = true;
         }
-        
+
         function hideLoading() {
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('optimize-btn').disabled = false;
         }
-        
+
         function showResult(content) {
-            document.getElementById('result-content').textContent = content;
+            document.getElementById('result-content').innerHTML = renderMarkdown(content);
             document.getElementById('result-section').classList.remove('hidden');
         }
-        
+
         function hideResult() {
             document.getElementById('result-section').classList.add('hidden');
         }
-        
+
         function showError(message) {
             document.getElementById('error-message').textContent = message;
             document.getElementById('error-state').classList.remove('hidden');
         }
-        
+
         function hideError() {
             document.getElementById('error-state').classList.add('hidden');
         }
-        
+
         function copyResult() {
-            const content = document.getElementById('result-content').textContent;
-            navigator.clipboard.writeText(content).then(() => {
-                alert('已复制到剪贴板');
-            });
+            if (!currentResultText) return;
+            copyText(currentResultText);
         }
+
+        async function exportResult(format) {
+            await exportAndPreview(format, currentExportText, '个人简历', 'export-preview', 'clean');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initFileUpload({
+                dropzoneId: 'resume-dropzone',
+                fileInputId: 'resume-file',
+                defaultId: 'resume-upload-default',
+                successId: 'resume-upload-success',
+                filenameId: 'resume-filename',
+                onSelect: handleFileSelect,
+            });
+            initHistorySidebar(TOOL_NAME);
+        });
     </script>
+
+    {% include "_history_sidebar.html" %}
 </body>
 </html>

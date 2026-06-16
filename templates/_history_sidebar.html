@@ -1,0 +1,25 @@
+<!-- History Sidebar (shared partial) -->
+<div id="history-sidebar" class="hidden fixed top-0 right-0 h-full w-80 z-[90] bg-surface-container/95 backdrop-blur-xl border-l border-outline-variant/30 shadow-2xl flex flex-col">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/30">
+        <h3 class="text-lg font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">history</span>
+            历史记录
+        </h3>
+        <button onclick="toggleHistorySidebar()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-on-surface-variant">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="flex items-center justify-between px-5 py-2 text-xs">
+        <span id="history-count" class="text-on-surface-variant">0 条记录</span>
+        <button onclick="clearAllHistory()" class="text-red-400 hover:underline">清空全部</button>
+    </div>
+    <div id="history-list" class="flex-1 overflow-y-auto px-3 pb-4">
+        <!-- 历史记录项动态填充 -->
+    </div>
+</div>
+
+<!-- 浮动按钮（每个工具页可调用 toggleHistorySidebar） -->
+<button id="history-toggle-btn" onclick="toggleHistorySidebar()" class="hidden fixed bottom-8 right-8 z-[80] btn-primary px-5 py-3 rounded-full shadow-2xl flex items-center gap-2">
+    <span class="material-symbols-outlined">history</span>
+    <span>历史</span>
+</button>

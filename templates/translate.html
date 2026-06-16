@@ -160,11 +160,20 @@
                 <span class="text-xl font-bold text-on-surface">AI助手</span>
             </a>
             
-            <div class="flex items-center gap-6">
+            <div class="flex items-center gap-4">
                 <a href="/" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
                     <span class="material-symbols-outlined text-lg">home</span>
                     <span>返回首页</span>
                 </a>
+
+                <span id="api-status-badge" class="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-500/10 border border-yellow-500/30 text-yellow-400" title="当前为模拟返回">
+                    <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                    <span id="api-status-text">未配置</span>
+                </span>
+
+                <button onclick="openSettings()" class="btn-secondary px-4 py-2 rounded-full text-sm font-medium text-on-surface flex items-center gap-2" title="配置 AI 模型与 API Key">
+                    <span class="material-symbols-outlined text-base">settings</span>
+                </button>
             </div>
         </nav>
     </header>
@@ -184,17 +193,47 @@
             
             <!-- Input Section -->
             <div class="glass-card rounded-2xl p-8 mb-8">
-                <div class="mb-6">
+                <div class="mb-4">
                     <label class="block text-sm font-medium text-on-surface mb-3">输入文本</label>
-                    <textarea 
+                    <textarea
                         id="input-text"
                         class="input-area w-full h-40 rounded-xl p-4 text-on-surface placeholder-on-surface-variant resize-none"
                         placeholder="输入要翻译的文本..."
                     ></textarea>
                 </div>
-                
+
+                <!-- 文件上传区 -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-on-surface mb-3">或上传文件（PDF / Word / TXT）</label>
+                    <div id="translate-dropzone" class="border-2 border-dashed border-outline-variant rounded-xl p-4 text-center cursor-pointer hover:border-tertiary transition-colors">
+                        <input type="file" id="translate-file" class="hidden" accept=".pdf,.docx,.doc,.txt">
+                        <div id="translate-upload-default">
+                            <span class="material-symbols-outlined text-2xl text-on-surface-variant">upload_file</span>
+                            <p class="text-on-surface-variant text-sm">点击上传</p>
+                        </div>
+                        <div id="translate-upload-success" class="hidden">
+                            <span class="material-symbols-outlined text-2xl text-emerald-400">check_circle</span>
+                            <p id="translate-filename" class="text-on-surface text-sm font-medium"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 目标语言选择 -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-on-surface mb-2">目标语言</label>
+                    <select id="target-lang" class="input-area w-full md:w-64 px-4 py-2 rounded-xl text-on-surface">
+                        <option value="English">英语</option>
+                        <option value="中文">中文</option>
+                        <option value="日本語">日语</option>
+                        <option value="한국어">韩语</option>
+                        <option value="Français">法语</option>
+                        <option value="Deutsch">德语</option>
+                        <option value="Español">西班牙语</option>
+                    </select>
+                </div>
+
                 <div class="flex flex-wrap gap-4">
-                    <button 
+                    <button
                         id="translate-btn"
                         onclick="translateText()"
                         class="btn-primary px-8 py-3 rounded-xl font-semibold flex items-center gap-2"
@@ -202,7 +241,7 @@
                         <span class="material-symbols-outlined">translate</span>
                         翻译
                     </button>
-                    <button 
+                    <button
                         id="polish-btn"
                         onclick="polishText()"
                         class="btn-tertiary px-8 py-3 rounded-xl font-semibold flex items-center gap-2"
@@ -210,7 +249,7 @@
                         <span class="material-symbols-outlined">auto_fix_high</span>
                         润色
                     </button>
-                    <button 
+                    <button
                         onclick="clearInput()"
                         class="btn-secondary px-8 py-3 rounded-xl font-semibold text-on-surface"
                     >
@@ -233,20 +272,44 @@
                     <span class="material-symbols-outlined text-tertiary">check_circle</span>
                     <h2 class="text-xl font-bold text-on-surface">翻译结果</h2>
                 </div>
-                
+
                 <div class="result-card rounded-2xl p-6 md:p-8">
-                    <pre id="result-content" class="whitespace-pre-wrap text-on-surface leading-relaxed font-sans"></pre>
+                    <div id="result-content" class="text-on-surface leading-relaxed"></div>
                 </div>
-                
-                <div class="flex flex-wrap gap-4 mt-6">
-                    <button onclick="copyResult()" class="btn-secondary px-6 py-3 rounded-xl font-semibold text-on-surface flex items-center gap-2">
+
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button onclick="copyResult()" class="btn-secondary px-5 py-3 rounded-xl font-medium text-on-surface flex items-center gap-2">
                         <span class="material-symbols-outlined">content_copy</span>
-                        复制结果
+                        复制
                     </button>
-                    <button onclick="swapInputResult()" class="btn-tertiary px-6 py-3 rounded-xl font-semibold flex items-center gap-2">
+                    <button onclick="exportResult('docx')" class="btn-secondary px-5 py-3 rounded-xl font-medium text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined">description</span>
+                        导出 Word
+                    </button>
+                    <button onclick="exportResult('pdf')" class="btn-secondary px-5 py-3 rounded-xl font-medium text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined">picture_as_pdf</span>
+                        导出 PDF
+                    </button>
+                    <button onclick="swapInputResult()" class="btn-tertiary px-5 py-3 rounded-xl font-medium flex items-center gap-2">
                         <span class="material-symbols-outlined">swap_horiz</span>
-                        翻译结果作为输入
+                        结果作为输入
                     </button>
+                </div>
+
+                <div id="export-preview" class="hidden mt-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-semibold text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">preview</span>
+                            文档预览
+                        </h3>
+                        <a id="export-download-link" href="#" download class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1">
+                            <span class="material-symbols-outlined text-base">download</span>
+                            下载
+                        </a>
+                    </div>
+                    <div class="result-card rounded-2xl p-4">
+                        <iframe id="export-iframe" class="w-full rounded-lg" style="height: 600px; background: white;"></iframe>
+                    </div>
                 </div>
             </div>
             
@@ -269,17 +332,19 @@
             <p>© 2024 AI助手 - 翻译助手工具</p>
         </div>
     </footer>
-    
+
+    {% include "_settings_modal.html" %}
+
+    <script src="/static/js/utils.js"></script>
     <script>
         // p5.js Particle System
         let particles = [];
         const particleCount = 40;
-        
+
         class Particle {
             constructor() {
                 this.reset();
             }
-            
             reset() {
                 this.x = random(width);
                 this.y = random(height);
@@ -289,7 +354,6 @@
                 this.opacity = random(80, 150);
                 this.color = random(['#ffdcc5', '#ffb783']);
             }
-            
             update() {
                 this.x += this.speedX;
                 this.y += this.speedY;
@@ -297,14 +361,13 @@
                     this.reset();
                 }
             }
-            
             draw() {
                 noStroke();
                 fill(this.color + hex(floor(this.opacity), 2));
                 circle(this.x, this.y, this.size);
             }
         }
-        
+
         function setup() {
             const canvas = createCanvas(windowWidth, windowHeight);
             canvas.parent('p5-canvas');
@@ -312,7 +375,7 @@
                 particles.push(new Particle());
             }
         }
-        
+
         function draw() {
             clear();
             for (let i = 0; i < particles.length; i++) {
@@ -327,36 +390,78 @@
             }
             particles.forEach(p => { p.update(); p.draw(); });
         }
-        
+
         function windowResized() {
             resizeCanvas(windowWidth, windowHeight);
         }
-        
-        async function translateText() {
-            const text = document.getElementById('input-text').value.trim();
-            
-            if (!text) {
-                showError('请输入要翻译的文本');
+
+        let selectedFile = null;
+        let currentResultText = '';
+        let currentExportText = '';  // 用于导出的翻译内容
+        const TOOL_NAME = 'translate';
+
+        function handleFileSelect(file) {
+            const allowed = ['.pdf', '.docx', '.doc', '.txt'];
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowed.includes(ext)) {
+                showError('不支持的文件格式：' + ext);
                 return;
             }
-            
+            if (file.size > 10 * 1024 * 1024) {
+                showError('文件超过 10MB 限制');
+                return;
+            }
+            selectedFile = file;
+            showUploadSuccess('translate-upload-default', 'translate-upload-success', 'translate-filename', file.name);
+            hideError();
+        }
+
+        function clearTranslateFile() {
+            selectedFile = null;
+            document.getElementById('translate-file').value = '';
+            clearUpload('translate-upload-default', 'translate-upload-success');
+        }
+
+        async function translateText() {
+            const text = document.getElementById('input-text').value.trim();
+            const targetLang = document.getElementById('target-lang').value;
+
+            if (!text && !selectedFile) {
+                showError('请输入文本或上传文件');
+                return;
+            }
+
             hideError();
             hideResult();
+            hideExportPreview();
             showLoading('翻译');
-            
+
             try {
-                const response = await fetch('/api/translate/translate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: text }),
-                });
-                
-                const data = await response.json();
-                
+                let response, data;
+                if (selectedFile) {
+                    const formData = new FormData();
+                    formData.append('file', selectedFile);
+                    formData.append('target_lang', targetLang);
+                    response = await fetch('/api/translate/translate', { method: 'POST', body: formData });
+                } else {
+                    response = await fetch('/api/translate/translate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, target_lang: targetLang }),
+                    });
+                }
+                data = await response.json();
                 if (response.ok) {
-                    showResult(data.result || data.translation || data.text);
+                    currentResultText = data.result || data.translation || data.text || '';
+                    currentExportText = data.optimized_text || currentResultText;
+                    showResult(currentResultText);
+                    saveHistory({
+                        tool: TOOL_NAME,
+                        title: '翻译→' + targetLang + ' - ' + new Date().toLocaleString('zh-CN'),
+                        input_text: data.source || text,
+                        output_text: currentResultText,
+                        meta: { target_lang: targetLang, source: selectedFile ? 'file' : 'text' },
+                    });
                 } else {
                     showError(data.error || '翻译失败，请稍后重试');
                 }
@@ -366,91 +471,102 @@
                 hideLoading();
             }
         }
-        
+
         async function polishText() {
             const text = document.getElementById('input-text').value.trim();
-            
-            if (!text) {
-                showError('请输入要润色的文本');
-                return;
-            }
-            
-            hideError();
-            hideResult();
+            if (!text) { showError('请输入要润色的文本'); return; }
+            hideError(); hideResult(); hideExportPreview();
             showLoading('润色');
-            
             try {
                 const response = await fetch('/api/translate/polish', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: text }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
                 });
-                
                 const data = await response.json();
-                
                 if (response.ok) {
-                    showResult(data.result || data.polished || data.text);
+                    currentResultText = data.result || data.polished || data.text || '';
+                    currentExportText = data.optimized_text || currentResultText;
+                    showResult(currentResultText);
+                    saveHistory({
+                        tool: TOOL_NAME,
+                        title: '润色 - ' + new Date().toLocaleString('zh-CN'),
+                        input_text: text,
+                        output_text: currentResultText,
+                        meta: { action: 'polish' },
+                    });
                 } else {
-                    showError(data.error || '润色失败，请稍后重试');
+                    showError(data.error || '润色失败');
                 }
-            } catch (error) {
-                showError('网络错误，请检查后端服务是否运行在 localhost:5001');
-            } finally {
-                hideLoading();
-            }
+            } catch (e) { showError('网络错误，请检查后端服务是否运行在 localhost:5001'); }
+            finally { hideLoading(); }
         }
-        
+
         function clearInput() {
             document.getElementById('input-text').value = '';
+            clearTranslateFile();
             hideResult();
+            hideExportPreview();
             hideError();
         }
-        
+
         function showLoading(action) {
             document.getElementById('loading-state').querySelector('span').textContent = `AI正在${action}中...`;
             document.getElementById('loading-state').classList.remove('hidden');
             document.getElementById('translate-btn').disabled = true;
             document.getElementById('polish-btn').disabled = true;
         }
-        
+
         function hideLoading() {
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('translate-btn').disabled = false;
             document.getElementById('polish-btn').disabled = false;
         }
-        
+
         function showResult(content) {
-            document.getElementById('result-content').textContent = content;
+            document.getElementById('result-content').innerHTML = renderMarkdown(content);
             document.getElementById('result-section').classList.remove('hidden');
         }
-        
+
         function hideResult() {
             document.getElementById('result-section').classList.add('hidden');
         }
-        
+
         function showError(message) {
             document.getElementById('error-message').textContent = message;
             document.getElementById('error-state').classList.remove('hidden');
         }
-        
+
         function hideError() {
             document.getElementById('error-state').classList.add('hidden');
         }
-        
+
         function copyResult() {
-            const content = document.getElementById('result-content').textContent;
-            navigator.clipboard.writeText(content).then(() => {
-                alert('已复制到剪贴板');
-            });
+            if (currentResultText) copyText(currentResultText);
         }
-        
+
+        async function exportResult(format) {
+            await exportAndPreview(format, currentExportText, '翻译文档', 'export-preview', 'clean');
+        }
+
         function swapInputResult() {
-            const result = document.getElementById('result-content').textContent;
-            document.getElementById('input-text').value = result;
+            document.getElementById('input-text').value = currentResultText;
             hideResult();
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFileUpload({
+                dropzoneId: 'translate-dropzone',
+                fileInputId: 'translate-file',
+                defaultId: 'translate-upload-default',
+                successId: 'translate-upload-success',
+                filenameId: 'translate-filename',
+                onSelect: handleFileSelect,
+            });
+            initHistorySidebar(TOOL_NAME);
+        });
     </script>
+
+    {% include "_history_sidebar.html" %}
 </body>
 </html>

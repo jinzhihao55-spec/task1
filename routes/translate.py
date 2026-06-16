@@ -1,99 +1,110 @@
-# 翻译助手路由
-# 支持中英互译和文本润色
+# 翻译路由
+# 支持文本输入或上传文件（PDF/Word/TXT）提取文本后翻译
 
+import os
 from flask import Blueprint, request, jsonify
 from services.ai_service import ai_service
+from services.doc_parser import extract_text_from_upload
 
-translate_bp = Blueprint('translate', __name__)
+translate_bp = Blueprint("translate", __name__)
 
-# 翻译系统提示词
-TRANSLATE_PROMPT = """你是一位专业翻译专家，精通中英双语。用户会给你一段文本，你需要：
-1. 准确翻译文本内容
-2. 保持原文的语气和风格
-3. 对专业术语给出注释
-4. 如果原文有语法或表达问题，给出润色建议
-5. 用Markdown格式输出
+TRANSLATE_PROMPT = """你是一位专业翻译。请将用户提供的文本翻译成{target_lang}。
+要求：
+1. 准确传达原意，语言自然流畅
+2. 保留专业术语的准确性
+3. 严格保留原文的结构、段落划分、列表、标题层级和排版
+4. 直接输出翻译结果，不要加任何解释、说明、问候或前缀
+5. 如果原文包含 Markdown 格式（# 标题、** 加粗、- 列表等），必须完整保留
+6. 不要输出 "以下是翻译内容"、"翻译如下" 等包裹性文字
 
-翻译原则：信、达、雅。"""
+直接输出翻译结果即可。"""
 
 
-@translate_bp.route('/translate', methods=['POST'])
+@translate_bp.route("/translate", methods=["POST"])
 def translate_text():
     """
-    翻译接口
-    请求体：{ "text": "待翻译文本", "target_lang": "目标语言(zh/en,可选,自动检测)" }
-    返回：{ "success": true, "result": "翻译结果(Markdown)" }
+    翻译文本或文件
+    请求体：{ "text": "...", "target_lang": "English" } 或 multipart/form-data
+    返回：{ "success": true, "result": "翻译结果", "source": "原文" }
     """
-    data = request.get_json()
+    text = ""
+    target_lang = "English"
 
-    if not data or 'text' not in data:
-        return jsonify({
-            "success": False,
-            "error": "请提供待翻译文本，字段名：text"
-        }), 400
-
-    text = data['text'].strip()
-    target_lang = data.get('target_lang', 'auto')
-
-    if len(text) < 1:
-        return jsonify({"success": False, "error": "翻译内容不能为空"}), 400
-
-    # 构建提示词
-    if target_lang == 'auto':
-        user_prompt = f"请自动检测语言并翻译为另一种语言（中→英 或 英→中）：\n\n{text}"
-    elif target_lang == 'zh':
-        user_prompt = f"请将以下英文翻译为中文：\n\n{text}"
-    elif target_lang == 'en':
-        user_prompt = f"请将以下中文翻译为英文：\n\n{text}"
+    if request.content_type and "multipart/form-data" in request.content_type:
+        if "file" not in request.files:
+            return jsonify({"success": False, "error": "请上传文件"}), 400
+        file = request.files["file"]
+        target_lang = request.form.get("target_lang", "English")
+        try:
+            text = extract_text_from_upload(file)
+        except Exception as e:
+            return jsonify({"success": False, "error": f"解析文件失败：{str(e)}"}), 400
     else:
-        user_prompt = f"请将以下文本翻译为{target_lang}：\n\n{text}"
+        data = request.get_json() or {}
+        text = (data.get("text") or "").strip()
+        target_lang = (data.get("target_lang") or "English").strip()
+
+    if not text or len(text) < 5:
+        return jsonify({"success": False, "error": "文本内容过短（至少5字）"}), 400
 
     result = ai_service.chat(
-        system_prompt=TRANSLATE_PROMPT,
-        user_prompt=user_prompt,
-        temperature=0.3  # 低温度，保证翻译准确性
+        system_prompt=TRANSLATE_PROMPT.format(target_lang=target_lang),
+        user_prompt=text[:6000],
+        temperature=0.3,
     )
 
     return jsonify({
         "success": True,
         "result": result,
-        "source_lang": target_lang
+        "optimized_text": result,
+        "source": text[:1000],
+        "target_lang": target_lang,
     })
 
 
-@translate_bp.route('/polish', methods=['POST'])
+@translate_bp.route("/polish", methods=["POST"])
 def polish_text():
     """
-    文本润色接口
-    请求体：{ "text": "待润色文本", "lang": "语言(zh/en,可选)" }
-    返回：{ "success": true, "result": "润色后的文本及修改说明" }
+    润色文本
+    请求体：{ "text": "..." }
     """
-    data = request.get_json()
-
-    if not data or 'text' not in data:
-        return jsonify({"success": False, "error": "请提供待润色文本"}), 400
-
-    text = data['text'].strip()
-    lang = data.get('lang', 'zh')
-
-    polish_prompt = f"""请对以下{lang}文文本进行润色优化：
-
-原文：
-{text}
-
-要求：
-1. 保持原文核心含义不变
-2. 优化表达，使其更流畅、更专业
-3. 列出主要修改点及原因
-4. 同时给出润色后的完整文本"""
+    data = request.get_json() or {}
+    text = (data.get("text") or "").strip()
+    if not text or len(text) < 5:
+        return jsonify({"success": False, "error": "文本内容过短（至少5字）"}), 400
 
     result = ai_service.chat(
-        system_prompt="你是资深编辑和语言专家，擅长文本润色和优化。",
-        user_prompt=polish_prompt,
-        temperature=0.4
+        system_prompt="""你是一位专业文字编辑。请对用户提供的文本进行润色，要求：
+1. 保持原意
+2. 让语言更流畅自然
+3. 修复语法错误
+4. 保留 Markdown 格式
+5. 用中文回复并直接给出润色后的结果，不要加解释""",
+        user_prompt=text[:4000],
+        temperature=0.4,
     )
 
     return jsonify({
         "success": True,
-        "result": result
+        "result": result,
+        "optimized_text": result,
+        "source": text[:1000],
+    })
+
+
+@translate_bp.route("/languages", methods=["GET"])
+def list_languages():
+    """支持的目标语言列表"""
+    return jsonify({
+        "success": True,
+        "languages": [
+            {"code": "English", "name": "英语"},
+            {"code": "中文", "name": "中文（简体）"},
+            {"code": "日本語", "name": "日语"},
+            {"code": "한국어", "name": "韩语"},
+            {"code": "Français", "name": "法语"},
+            {"code": "Deutsch", "name": "德语"},
+            {"code": "Español", "name": "西班牙语"},
+            {"code": "Русский", "name": "俄语"},
+        ]
     })

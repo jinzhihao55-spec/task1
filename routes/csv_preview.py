@@ -89,7 +89,7 @@ def analyze_csv_text():
     """
     直接分析CSV文本数据（无需上传文件）
     请求体：{ "data": "CSV格式文本" }
-    返回：{ "success": true, "analysis": "分析报告" }
+    返回：{ "success": true, "preview": {...}, "stats": {...}, "analysis": "分析报告" }
     """
     data = request.get_json()
 
@@ -101,16 +101,61 @@ def analyze_csv_text():
     if len(csv_text) < 20:
         return jsonify({"success": False, "error": "数据内容过短"}), 400
 
-    analysis = ai_service.chat(
-        system_prompt=CSV_ANALYSIS_PROMPT,
-        user_prompt=f"请分析以下CSV数据：\n\n{csv_text[:8000]}",
-        temperature=0.3
-    )
+    try:
+        import pandas as pd
+        from io import StringIO
+        
+        df = pd.read_csv(StringIO(csv_text))
+        
+        preview = {
+            "columns": list(df.columns),
+            "row_count": len(df),
+            "col_count": len(df.columns),
+            "head": df.head(10).to_dict(orient='records'),
+            "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+            "null_counts": {col: int(df[col].isnull().sum()) for col in df.columns},
+        }
+        
+        stats = {
+            "rows": len(df),
+            "columns": len(df.columns),
+            "numeric_columns": len(df.select_dtypes(include=['int64', 'float64']).columns),
+            "missing_values": int(df.isnull().sum().sum()),
+        }
+        
+        analysis_input = f"""CSV文件信息：
+- 列数：{len(df.columns)}
+- 行数：{len(df)}
+- 列名：{list(df.columns)}
+- 数据类型：{dict(df.dtypes)}
+- 缺失值统计：{dict(df.isnull().sum())}
 
-    return jsonify({
-        "success": True,
-        "analysis": analysis
-    })
+前10行数据：
+{df.head(10).to_markdown()}"""
+
+        analysis = ai_service.chat(
+            system_prompt=CSV_ANALYSIS_PROMPT,
+            user_prompt=f"请分析以下CSV数据：\n\n{analysis_input}",
+            temperature=0.3
+        )
+
+        return jsonify({
+            "success": True,
+            "preview": preview,
+            "stats": stats,
+            "analysis": analysis
+        })
+
+    except ImportError:
+        return jsonify({
+            "success": False,
+            "error": "未安装pandas。请运行：pip install pandas tabulate"
+        }), 500
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"CSV解析失败：{str(e)}"
+        }), 400
 
 
 def _parse_csv(filepath: str):

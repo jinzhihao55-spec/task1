@@ -1,0 +1,299 @@
+<!-- Settings Modal (shared partial) -->
+<div id="settings-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="glass-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative">
+        <button onclick="closeSettings()" class="absolute top-4 right-4 w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-on-surface-variant" title="关闭">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-2xl">tune</span>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-on-surface">AI 模型设置</h2>
+                <p class="text-sm text-on-surface-variant">选择模型供应商并填入你自己的 API Key</p>
+            </div>
+        </div>
+
+        <!-- 当前状态 -->
+        <div id="settings-status" class="mt-6 p-4 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-center gap-3">
+            <span id="settings-status-dot" class="w-3 h-3 rounded-full bg-yellow-400"></span>
+            <div class="flex-1 text-sm">
+                <p id="settings-status-title" class="text-on-surface font-medium">未配置</p>
+                <p id="settings-status-desc" class="text-on-surface-variant text-xs mt-0.5">当前为模拟返回，请在下方填入 API Key</p>
+            </div>
+        </div>
+
+        <div class="mt-6 space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-2">模型供应商</label>
+                <select id="provider-select" class="input-area w-full px-4 py-3 rounded-xl text-on-surface" onchange="onProviderChange()"></select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-2">API Base URL</label>
+                <input id="api-base-input" type="text" class="input-area w-full px-4 py-3 rounded-xl text-on-surface font-mono text-sm" placeholder="https://api.openai.com/v1">
+                <p class="text-xs text-on-surface-variant mt-1">OpenAI 兼容接口地址，选择预设会自动填充</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-2">模型名称</label>
+                <input id="model-input" type="text" class="input-area w-full px-4 py-3 rounded-xl text-on-surface font-mono text-sm" placeholder="gpt-3.5-turbo">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-on-surface mb-2">API Key</label>
+                <div class="relative">
+                    <input id="api-key-input" type="password" class="input-area w-full px-4 py-3 pr-12 rounded-xl text-on-surface font-mono text-sm" placeholder="sk-xxxxxxxx">
+                    <button type="button" onclick="toggleKeyVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md hover:bg-white/10 flex items-center justify-center text-on-surface-variant" title="显示/隐藏">
+                        <span id="key-visibility-icon" class="material-symbols-outlined text-lg">visibility</span>
+                    </button>
+                </div>
+                <p class="text-xs text-on-surface-variant mt-1">Key 仅保存在本地 .env 文件，不会上传服务器</p>
+            </div>
+
+            <div id="current-key-info" class="hidden p-3 rounded-lg bg-surface-container-low/60 border border-outline-variant/30">
+                <p class="text-xs text-on-surface-variant">当前已保存的 Key：<code id="current-key-masked" class="text-primary font-mono"></code></p>
+            </div>
+
+            <div class="flex flex-wrap gap-3 pt-2">
+                <button id="test-btn" onclick="testConnection()" class="btn-secondary px-5 py-2.5 rounded-xl text-on-surface font-medium flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">network_check</span>
+                    测试连接
+                </button>
+                <button id="save-btn" onclick="saveConfig()" class="btn-primary px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 flex-1 justify-center">
+                    <span class="material-symbols-outlined text-lg">save</span>
+                    保存配置
+                </button>
+                <button id="reset-btn" onclick="resetConfig()" class="btn-secondary px-4 py-2.5 rounded-xl text-red-400 border-red-500/30 font-medium flex items-center gap-2" title="清除已保存的 API Key">
+                    <span class="material-symbols-outlined text-lg">delete</span>
+                    清除
+                </button>
+            </div>
+
+            <div id="settings-message" class="hidden p-4 rounded-xl text-sm"></div>
+
+            <details class="mt-2 text-sm">
+                <summary class="cursor-pointer text-on-surface-variant hover:text-primary select-none">如何获取 API Key？</summary>
+                <div class="mt-3 p-4 rounded-xl bg-surface-container-low/60 border border-outline-variant/30 text-on-surface-variant leading-relaxed space-y-2">
+                    <p>• <b>OpenAI</b>：访问 <code>platform.openai.com</code> 创建 API Key</p>
+                    <p>• <b>DeepSeek</b>：访问 <code>platform.deepseek.com</code> 注册并获取</p>
+                    <p>• <b>智谱AI</b>：访问 <code>bigmodel.cn</code> 实名后获取</p>
+                    <p>• <b>Moonshot</b>：访问 <code>platform.moonshot.cn</code> 申请</p>
+                    <p class="text-xs text-on-surface-variant/70 mt-2">⚠️ Key 仅保存在本地 <code>.env</code> 文件中，不会上传或共享。</p>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============== Settings Modal Logic ==============
+    let PROVIDERS = [];
+    let CURRENT_STATUS = null;
+
+    async function fetchStatus() {
+        try {
+            const res = await fetch('/api/config');
+            const data = await res.json();
+            if (data.success) {
+                CURRENT_STATUS = data.status;
+                PROVIDERS = data.status.providers || [];
+                renderProviderOptions();
+                applyStatusToUI(data.status);
+            }
+        } catch (e) {
+            console.error('fetchStatus error', e);
+        }
+    }
+
+    function renderProviderOptions() {
+        const sel = document.getElementById('provider-select');
+        if (!sel) return;
+        sel.innerHTML = PROVIDERS.map(p =>
+            `<option value="${p.id}">${p.name}${p.model ? ' — ' + p.model : ''}</option>`
+        ).join('');
+    }
+
+    function onProviderChange() {
+        const id = document.getElementById('provider-select').value;
+        const p = PROVIDERS.find(x => x.id === id);
+        if (!p) return;
+        if (p.base_url) document.getElementById('api-base-input').value = p.base_url;
+        if (p.model) document.getElementById('model-input').value = p.model;
+    }
+
+    function applyStatusToUI(status) {
+        const badge = document.getElementById('api-status-badge');
+        const text = document.getElementById('api-status-text');
+        if (!badge || !text) return;
+        if (status.active) {
+            badge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
+            text.textContent = (status.model || 'API') + ' · 已连接';
+        } else {
+            badge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-500/10 border border-yellow-500/30 text-yellow-400';
+            text.textContent = '未配置 · 模拟模式';
+        }
+
+        const dot = document.getElementById('settings-status-dot');
+        const title = document.getElementById('settings-status-title');
+        const desc = document.getElementById('settings-status-desc');
+        if (dot && title && desc) {
+            if (status.active) {
+                dot.className = 'w-3 h-3 rounded-full bg-emerald-400';
+                title.textContent = '已启用：' + (status.model || '');
+                desc.textContent = 'Base: ' + (status.api_base || '') + ' · Key: ' + (status.masked_key || '');
+            } else {
+                dot.className = 'w-3 h-3 rounded-full bg-yellow-400';
+                title.textContent = '未配置（模拟模式）';
+                desc.textContent = '请选择模型供应商并填入 API Key 以启用真实 AI 调用';
+            }
+        }
+
+        const info = document.getElementById('current-key-info');
+        const masked = document.getElementById('current-key-masked');
+        if (info && masked) {
+            if (status.has_key) {
+                info.classList.remove('hidden');
+                masked.textContent = status.masked_key || '****';
+            } else {
+                info.classList.add('hidden');
+            }
+        }
+
+        if (status.has_key) {
+            const baseInput = document.getElementById('api-base-input');
+            const modelInput = document.getElementById('model-input');
+            if (baseInput) baseInput.value = status.api_base || '';
+            if (modelInput) modelInput.value = status.model || '';
+        }
+    }
+
+    function openSettings() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            fetchStatus();
+        }
+    }
+
+    function closeSettings() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            const keyInput = document.getElementById('api-key-input');
+            if (keyInput) keyInput.value = '';
+        }
+    }
+
+    function toggleKeyVisibility() {
+        const input = document.getElementById('api-key-input');
+        const icon = document.getElementById('key-visibility-icon');
+        if (!input || !icon) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.textContent = 'visibility_off';
+        } else {
+            input.type = 'password';
+            icon.textContent = 'visibility';
+        }
+    }
+
+    function showMessage(text, type) {
+        const box = document.getElementById('settings-message');
+        if (!box) return;
+        box.classList.remove('hidden');
+        box.className = 'p-4 rounded-xl text-sm';
+        if (type === 'success') {
+            box.classList.add('bg-emerald-500/10', 'border', 'border-emerald-500/30', 'text-emerald-300');
+        } else if (type === 'error') {
+            box.classList.add('bg-red-500/10', 'border', 'border-red-500/30', 'text-red-300');
+        } else {
+            box.classList.add('bg-blue-500/10', 'border', 'border-blue-500/30', 'text-blue-300');
+        }
+        box.textContent = text;
+    }
+
+    function hideMessage() {
+        const box = document.getElementById('settings-message');
+        if (box) box.classList.add('hidden');
+    }
+
+    async function saveConfig() {
+        hideMessage();
+        const btn = document.getElementById('save-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
+        try {
+            const payload = {
+                provider_id: document.getElementById('provider-select').value,
+                api_key: document.getElementById('api-key-input').value,
+                api_base: document.getElementById('api-base-input').value,
+                model: document.getElementById('model-input').value,
+            };
+            const res = await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMessage('✅ 配置已保存并生效', 'success');
+                CURRENT_STATUS = data.status;
+                applyStatusToUI(data.status);
+                document.getElementById('api-key-input').value = '';
+            } else {
+                showMessage('❌ ' + (data.error || '保存失败'), 'error');
+            }
+        } catch (e) {
+            showMessage('❌ 网络错误：' + e.message, 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-lg">save</span>保存配置';
+            }
+        }
+    }
+
+    async function testConnection() {
+        hideMessage();
+        showMessage('正在测试连接...', 'info');
+        try {
+            const res = await fetch('/api/config/test', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showMessage('✅ 连接成功！模型 ' + data.model + ' 已就绪。响应示例：' + (data.reply || ''), 'success');
+            } else {
+                showMessage('❌ ' + (data.error || '测试失败'), 'error');
+            }
+        } catch (e) {
+            showMessage('❌ 网络错误：' + e.message, 'error');
+        }
+    }
+
+    async function resetConfig() {
+        if (!confirm('确定要清除已保存的 API Key 吗？')) return;
+        hideMessage();
+        try {
+            const res = await fetch('/api/config/reset', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showMessage('已清除，回到模拟模式', 'info');
+                CURRENT_STATUS = data.status;
+                applyStatusToUI(data.status);
+                document.getElementById('api-key-input').value = '';
+            } else {
+                showMessage('❌ ' + (data.error || '清除失败'), 'error');
+            }
+        } catch (e) {
+            showMessage('❌ 网络错误：' + e.message, 'error');
+        }
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeSettings();
+    });
+
+    fetchStatus();
+</script>
